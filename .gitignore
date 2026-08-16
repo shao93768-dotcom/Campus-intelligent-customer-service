@@ -1,0 +1,11 @@
+.claude
+.idea
+__pycache__
+contacts/
+data/
+logs/
+train_data/
+rag_qa/core/bert_logs/
+rag_qa/models/
+rag_qa/core/bert_query_classifier
+rag_qa/core/bert_results

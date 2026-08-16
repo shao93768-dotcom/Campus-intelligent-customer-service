@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>校园学生手册智能问答</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: #f0f2f5;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    background: linear-gradient(135deg, #1a73e8, #1557b0);
+    color: #fff;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  }
+  header h1 { font-size: 20px; font-weight: 600; }
+  header span { font-size: 13px; opacity: .85; }
+  #chat-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .msg {
+    max-width: 85%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    line-height: 1.6;
+    font-size: 14px;
+    word-break: break-word;
+    animation: fadeIn .25s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .msg.user {
+    background: #1a73e8;
+    color: #fff;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+  }
+  .msg.bot {
+    background: #fff;
+    color: #1a1a1a;
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
+  .msg.intent-tag {
+    font-size: 11px;
+    padding: 2px 10px;
+    border-radius: 10px;
+    background: #e8f0fe;
+    color: #1a73e8;
+    align-self: flex-start;
+    font-weight: 500;
+    margin-top: -4px;
+    margin-bottom: 2px;
+  }
+  .msg .timestamp {
+    font-size: 11px;
+    color: #999;
+    margin-top: 6px;
+    text-align: right;
+  }
+  .msg.bot .timestamp { color: #bbb; }
+  .thinking {
+    display: flex;
+    gap: 6px;
+    padding: 14px 20px;
+    background: #fff;
+    border-radius: 12px;
+    align-self: flex-start;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
+  .thinking span {
+    width: 8px; height: 8px;
+    background: #1a73e8;
+    border-radius: 50%;
+    animation: bounce 1.2s infinite;
+  }
+  .thinking span:nth-child(2) { animation-delay: .2s; }
+  .thinking span:nth-child(3) { animation-delay: .4s; }
+  @keyframes bounce {
+    0%,80%,100% { transform: scale(.6); opacity: .4; }
+    40% { transform: scale(1); opacity: 1; }
+  }
+  #input-area {
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 12px 16px 20px;
+    display: flex;
+    gap: 10px;
+    background: #f0f2f5;
+  }
+  #input-area input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid #d9d9d9;
+    border-radius: 24px;
+    font-size: 14px;
+    outline: none;
+    transition: border .2s;
+    background: #fff;
+  }
+  #input-area input:focus { border-color: #1a73e8; box-shadow: 0 0 0 2px rgba(26,115,232,.15); }
+  #input-area button {
+    width: 44px; height: 44px;
+    border: none;
+    border-radius: 50%;
+    background: #1a73e8;
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    transition: background .2s, transform .1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  #input-area button:hover { background: #1557b0; }
+  #input-area button:active { transform: scale(.95); }
+  #input-area button:disabled { background: #a0c4ff; cursor: not-allowed; }
+  .welcome {
+    text-align: center;
+    color: #999;
+    margin-top: 60px;
+  }
+  .welcome h3 { color: #333; margin-bottom: 8px; font-size: 18px; }
+  .welcome p { font-size: 13px; line-height: 1.8; }
+  /* 新对话按钮 */
+  #new-chat-btn {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.4);
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 16px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all .2s;
+    margin-left: auto;
+  }
+  #new-chat-btn:hover {
+    background: rgba(255,255,255,0.15);
+    border-color: #fff;
+  }
+  @media (max-width: 600px) {
+    header { padding: 12px 16px; }
+    header h1 { font-size: 17px; }
+    #chat-container { padding: 12px; }
+    .msg { max-width: 92%; font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div style="font-size:26px;">🎓</div>
+  <div>
+    <h1>理工学生手册智能问答</h1>
+    <span>基于 LLM + BERT + RAG 的三意图问答系统</span>
+  </div>
+  <button id="new-chat-btn" title="新开对话">+ 新对话</button>
+</header>
+
+<div id="chat-container">
+  <div class="welcome" id="welcome">
+    <h3>👋 你好！我是校小通</h3>
+    <p>
+      你可以问我学生手册相关的问题，比如：<br>
+      「晚归怎么处分」·「奖学金评定标准」·「辅导员电话多少」<br>
+      也可以和我闲聊或帮你转接人工服务。
+    </p>
+  </div>
+</div>
+
+<div id="input-area">
+  <input id="input" type="text" placeholder="输入你的问题..." autofocus>
+  <button id="send-btn" title="发送">➤</button>
+</div>
+
+<script>
+const chatContainer = document.getElementById('chat-container');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('send-btn');
+const welcome = document.getElementById('welcome');
+const newChatBtn = document.getElementById('new-chat-btn');
+let SESSION_ID = 'web_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+
+// 添加消息
+function addMessage(text, role, intent) {
+  welcome?.remove();
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+
+  if (intent) {
+    const tag = document.createElement('div');
+    tag.className = 'msg intent-tag';
+    const labels = { '闲聊': '💬 闲聊', '转人工': '👤 转人工', '专业知识': '📖 专业知识' };
+    tag.textContent = labels[intent] || intent;
+    chatContainer.appendChild(tag);
+  }
+
+  // 将文本中的换行转为 <br>
+  div.innerHTML = text.replace(/\n/g, '<br>');
+
+  const ts = document.createElement('div');
+  ts.className = 'timestamp';
+  const now = new Date();
+  ts.textContent = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  div.appendChild(ts);
+
+  chatContainer.appendChild(div);
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+  return div;
+}
+
+// 显示"正在输入"动画
+let thinkingEl = null;
+function showThinking() {
+  hideThinking();
+  const div = document.createElement('div');
+  div.className = 'thinking';
+  div.innerHTML = '<span></span><span></span><span></span>';
+  chatContainer.appendChild(div);
+  thinkingEl = div;
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+function hideThinking() { thinkingEl?.remove(); thinkingEl = null; }
+
+// 流式更新
+let currentBotDiv = null;
+function appendToBot(text) {
+  if (!currentBotDiv) {
+    currentBotDiv = document.createElement('div');
+    currentBotDiv.className = 'msg bot';
+    chatContainer.appendChild(currentBotDiv);
+  }
+  // 如果是纯换行，追加 <br>
+  currentBotDiv.innerHTML += text.replace(/\n/g, '<br>');
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+function finalizeBot() {
+  if (currentBotDiv) {
+    const ts = document.createElement('div');
+    ts.className = 'timestamp';
+    const now = new Date();
+    ts.textContent = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+    currentBotDiv.appendChild(ts);
+    currentBotDiv = null;
+  }
+}
+
+// 新开对话：清除前端历史 + 通知后端清除 + 重置会话ID
+async function startNewChat() {
+  // 通知后端清除历史
+  try {
+    await fetch('/api/chat/clear', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: SESSION_ID })
+    });
+  } catch (e) {
+    console.error('清除历史失败:', e);
+  }
+
+  // 重置会话ID
+  SESSION_ID = 'web_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+
+  // 清空前端界面
+  chatContainer.innerHTML = '';
+  const welcomeDiv = document.createElement('div');
+  welcomeDiv.className = 'welcome';
+  welcomeDiv.id = 'welcome';
+  welcomeDiv.innerHTML = `
+    <h3>👋 你好！我是校小通</h3>
+    <p>
+      你可以问我学生手册相关的问题，比如：<br>
+      「晚归怎么处分」·「奖学金评定标准」·「辅导员电话多少」<br>
+      也可以和我闲聊或帮你转接人工服务。
+    </p>
+  `;
+  chatContainer.appendChild(welcomeDiv);
+  input.value = '';
+  input.focus();
+}
+
+// 发送消息
+async function sendMessage() {
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  sendBtn.disabled = true;
+  input.disabled = true;
+
+  addMessage(text, 'user');
+  showThinking();
+
+  try {
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: text, session_id: SESSION_ID })
+    });
+
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || ''; // 保留未完成的行
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = JSON.parse(line.slice(6));
+
+        if (data.type === 'intent') {
+          hideThinking();
+          const labels = { '闲聊': '💬 闲聊', '转人工': '👤 转人工', '专业知识': '📖 专业知识' };
+          const tag = document.createElement('div');
+          tag.className = 'msg intent-tag';
+          tag.textContent = labels[data.intent] || data.intent;
+          chatContainer.appendChild(tag);
+        } else if (data.type === 'token') {
+          hideThinking();
+          appendToBot(data.content);
+        } else if (data.type === 'done') {
+          finalizeBot();
+        } else if (data.type === 'error') {
+          hideThinking();
+          addMessage('❌ 出错了：' + data.message, 'bot');
+        }
+      }
+    }
+  } catch (err) {
+    hideThinking();
+    addMessage('❌ 请求失败：' + err.message, 'bot');
+  } finally {
+    sendBtn.disabled = false;
+    input.disabled = false;
+    input.focus();
+  }
+}
+
+// 事件绑定
+sendBtn.addEventListener('click', sendMessage);
+input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+newChatBtn.addEventListener('click', startNewChat);
+</script>
+</body>
+</html>
