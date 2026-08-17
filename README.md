@@ -84,7 +84,7 @@ Campus intelligent customer service/
 │       ├── bge-m3/
 │       └── bge-reranker-large/
 └── data/
-    └── 湖北理工学院学生手册.pdf     # 学生手册 PDF
+    └── 学院学生手册.pdf     # 学生手册 PDF
 ```
 
 > ★ 为核心改造/新建文件
